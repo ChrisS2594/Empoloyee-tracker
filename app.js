@@ -1,0 +1,322 @@
+const cTable = require("console.table");
+const inquirer = require("inquirer");
+const mysql = require("mysql");
+
+const connection = mysql.createConnection({
+    host: " local host",
+    port: 8080,
+    user: "root",
+    password: "",
+    database: "employee_DB"
+});
+
+connection.connect((err) => {
+    if (err) throw err;
+    console.log('connected as ${connection.threadId}');
+    mainMenu();
+});
+
+function mainMenu() {
+    inquirer.prompt([
+        {
+            type: "list",
+            message: "where would you like to navigate?",
+            choices: [
+                "view departments",
+                "view roles",
+                "view employees",
+                "add role",
+                "add employee(manager)",
+                "add employee(non-manager)",
+                "update employee role",
+                "exit"
+
+            ],
+            name: "action"
+        }
+    ]).then(answer => {
+        switch (answer.action) {
+            case "view departments":
+                return viewDeparments();
+            case "view roles":
+                return viewRoles();
+            case "view employees":
+                return viewEmployees();
+            case "add role":
+                return addRole();
+            case "add employee":
+                return addEmployeeManager();
+            case "add employee":
+                return addEmployee();
+            case "update employee":
+                return updateEmployee();
+            case "Exit":
+                return connection.end();
+
+        };
+
+    });
+};
+
+function viewDepartments(){
+    connection.query("select * FROM Departments", (err, res) => {
+        if (err) throw err;
+        console.log("/n");
+        console.table(result);
+        console.log("/n");
+        mainMenu();
+    });
+
+};
+
+function viewDepartments(){
+    connection.query("SELECT * FROM departments", (err, res) => {
+        if (err) throw err;
+        console.log("\n");
+        console.table(res);
+        console.log("\n");
+        mainMenu();
+    });
+};
+
+function viewEmployees(){
+    connection.query("SELECT id, first_name, last_name, title, department, salary FROM employees LEFT JOIN roles ON employees.role_fk = roles.role_pk LEFT JOIN departments ON roles.dpt_fk = departments.dpt_pk;", (err, result) => {
+        if (err) throw err;
+        console.log("\n");
+        console.table(result);
+        console.log("\n");
+        mainMenu();
+    });
+};
+
+function viewRoles(){
+    connection.query("SELECT role_pk, title, salary, department FROM roles LEFT JOIN departments ON departments.dpt_pk = roles.dpt_fk", (err, result) => {
+        if (err) throw err;
+        console.log("\n");
+        console.table(result);
+        console.log("\n");
+        mainMenu();
+    });
+};
+
+function addDepartment(){
+    console.log("\n");
+    inquirer.prompt([
+        {
+            type: "input",
+            message: "Name of department: ",
+            name: "departmentName",
+        }
+    ]).then(answer => {
+        connection.query("INSERT INTO departments(department) VALUES (?)", [answer.departmentName], (err, res) => {
+            if (err) throw err;
+        });
+        console.log("\n");
+        mainMenu();
+    });
+};
+
+function addRole(){
+    console.log("\n");
+    let departmentNames = [];
+    let departmentIDs = [];
+    connection.query("SELECT * FROM departments", (err, result) => {
+        for (let i = 0; i < result.length; i++) {
+            departmentNames.push(result[i].department);
+            departmentIDs.push(result[i].dpt_pk);
+        }
+        inquirer.prompt([
+            {
+                type: "list",
+                message: "Select department for role",
+                choices: departmentNames,
+                name: "department_name"
+            },
+            {
+                type: "input",
+                message: "Title: ",
+                name: "title"
+            },
+            {
+                type: "number",
+                message: "Salary: ",
+                name: "salary"
+            }
+        ]).then(answers => {
+            let departmentID = null;
+            for (let i = 0; i < result.length; i++){
+                if (answers.department_name === result[i].department){
+                    departmentID = result[i].dpt_pk;
+                }
+            }
+            connection.query("INSERT INTO roles(title, salary, dpt_fk) VALUES (?, ?, ?)", [answers.title, answers.salary, departmentID], (err, result) => {
+                    if (err) throw err;
+                });
+                console.log("\n");
+                mainMenu();
+        });
+    })
+};
+
+function addManagerEmployee(){
+    let roleNames = [];
+    connection.query("SELECT * FROM roles", (err, result) => {
+        if (err) throw err;
+        for (let i = 0; i < result.length; i++){
+            if (result[i].title.includes("Manager")){
+                roleNames.push(result[i].title)
+            }
+        }
+        inquirer.prompt([
+            {
+                type: "input",
+                message: "First Name: ",
+                name: "firstName"
+            },
+            {
+                type: "input",
+                message: "Last Name: ",
+                name: "lastName"
+            },
+            {
+                type: "list",
+                message: "Role: ",
+                choices: roleNames,
+                name: "role"
+            }
+        ]).then(answers => {
+            let roleID = null;
+            for (let i = 0; i < result.length; i++){
+                if (answers.role === result[i].title) {
+                    roleID = result[i].role_pk;
+                }
+            }
+            connection.query("INSERT INTO employees (first_name, last_name, role_fk) VALUES (?, ?, ?)", [answers.firstName, answers.lastName, roleID], (err, result) => {
+                if (err) throw err;
+                mainMenu();
+            })
+        })
+    })
+}
+
+function addNonManagerEmployee(){
+    let managerID = null;
+    let roleID = null;
+    let managerNames = [];
+    let managerNamesWithIDs = [];
+    let nonManagerRoles = [];
+    let nonManagerRolesWithIDs = [];
+    connection.query("SELECT * FROM employees WHERE manager_id IS NULL", (err, result) => {
+        if (err) throw err;
+        for (let i = 0; i < result.length; i++){
+            managerNames.push(`${result[i].first_name} ${result[i].last_name}`);
+            managerNamesWithIDs.push({
+                ManagerObjName: `${result[i].first_name} ${result[i].last_name}`,
+                ManagerObjID: result[i].id
+            });
+        }
+    })
+    connection.query("SELECT * FROM roles", (err, result) => {
+        if (err) throw err;
+        for (let i = 0; i < result.length; i++){
+            if (result[i].title.includes("Manager") === false){
+                nonManagerRoles.push(result[i].title);
+                nonManagerRolesWithIDs.push({
+                    objRoleTitle: result[i].title,
+                    objRoleID: result[i].role_pk
+                })
+            }
+        }
+        inquirer.prompt([
+            {
+                type: "input",
+                message: "First Name: ",
+                name: "firstName"
+            },
+            {
+                type: "input",
+                message: "Last Name: ",
+                name: "lastName"
+            },
+            {
+                type: "list",
+                message: "Role: ",
+                choices: nonManagerRoles,
+                name: "role"
+            },
+            {
+                type: "list",
+                message: "Manager: ",
+                choices: managerNames,
+                name: "managerOfEmployee"
+            }
+        ]).then(answers => {
+            for (let i = 0; i < managerNamesWithIDs.length; i++){
+                if (managerNamesWithIDs[i].ManagerObjName === answers.managerOfEmployee){
+                    managerID = managerNamesWithIDs[i].ManagerObjID;
+                }
+            }
+
+            for (let i = 0; i < nonManagerRolesWithIDs.length; i++){
+                if (nonManagerRolesWithIDs[i].objRoleTitle === answers.role){
+                    roleID = nonManagerRolesWithIDs[i].objRoleID;
+                }
+            }
+
+            connection.query("INSERT INTO employees (first_name, last_name, role_fk, manager_id) VALUES (?, ?, ?, ?)", [answers.firstName, answers.lastName, roleID, managerID], (err, result) => {
+                if (err) throw err;
+                mainMenu();
+            })
+        })
+    })
+}
+
+function updateEmployeeRole(){
+    let employeeNames = [];
+    let roleTitles = [];
+    let roleTitlesAndIDs = [];
+    let newRoleID = null;
+    connection.query("SELECT * FROM employees", (err, result) => {
+        if (err) throw err;
+        for (let i = 0; i < result.length; i++){
+            let fullName = `${result[i].first_name} ${result[i].last_name}`;
+            employeeNames.push(fullName);
+        }
+    });
+    connection.query("SELECT * FROM roles", (err, result) => {
+        if (err) throw err;
+        for (let i = 0; i < result.length; i++){
+            roleTitles.push(result[i].title);
+            roleTitlesAndIDs.push({
+                title: result[i].title,
+                id: result[i].role_pk
+            })
+        }
+        inquirer.prompt([
+            {
+                type: "list",
+                message: "Which employees role would you like to update?",
+                choices: employeeNames,
+                name: "employeeToUpdate"
+            },
+            {
+                type: "list",
+                message: "New role: ",
+                choices: roleTitles,
+                name: "newRole"
+            }
+        ]).then(answers=> {
+            let firstName = (answers.employeeToUpdate).split(" ")[0];
+            let lastName = (answers.employeeToUpdate).split(" ")[1];
+            for (let i = 0; i < roleTitlesAndIDs.length; i++){
+                if (answers.newRole === roleTitlesAndIDs[i].title){
+                    newRoleID = roleTitlesAndIDs[i].id;
+                }
+            }
+            connection.query("UPDATE employees SET role_fk = ? WHERE first_name = ? AND last_name = ?", [newRoleID, firstName, lastName], (err, result) => {
+                if (err) throw err;
+                mainMenu();
+            })
+        })
+    })
+}
