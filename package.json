@@ -4,21 +4,21 @@
     "description": "",
     "main": "index.js",
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1"
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
     "repository": {
-      "type": "git",
-      "url": "git+https://github.com/jakekravas/Employee-Tracker.git"
+        "type": "git",
+        "url": "https://github.com/ChrisS2594/Empoloyee-tracker"
     },
     "author": "",
     "license": "ISC",
     "bugs": {
-      "url": "https://github.com/jakekravas/Employee-Tracker/issues"
+        "url": "https://chriss2594.github.io/Empoloyee-tracker/.git"
     },
-    "homepage": "https://github.com/jakekravas/Employee-Tracker#readme",
+    "homepage": "https://chriss2594.github.io/Empoloyee-tracker/",
     "dependencies": {
-      "console.table": "^0.10.0",
-      "inquirer": "^7.0.4",
-      "mysql": "^2.18.1"
+        "console.table": "^0.10.0",
+        "inquirer": "^7.0.4",
+        "mysql": "^2.18.1"
     }
-  }
+}
